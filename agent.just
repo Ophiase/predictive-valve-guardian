@@ -10,6 +10,11 @@ ci:
     just check
     just guards
 
+[group("docs")]
+[doc("Render the Mermaid diagrams of the READMEs into build/diagrams and check their width; downloads mermaid-cli")]
+diagrams *files:
+    .agents/checks/diagrams.sh {{ if files == "" { "README.md libraries/*/README.md services/*/README.md" } else { files } }}
+
 [group("code")]
 [doc("The longest files of code, tests left out: just agent::longest 20; green to 100 lines, yellow to 200, red past")]
 [script("bash")]

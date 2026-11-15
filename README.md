@@ -60,38 +60,77 @@ condition, from its pressure and flow sensors.
 Serving: two services, one HTTP boundary.
 
 ```mermaid
-flowchart LR
-    browser([Browser]) --> web[web<br/>page]
-    client([Any client]) --> api
-    web -- JSON --> api[api<br/>FastAPI]
-    api --> model[(model.onnx<br/>+ card)]
-
+%%{init: {"flowchart": {"rankSpacing": 40}}}%%
+graph LR
+    curl([Any client])
+    subgraph web ["`**Frontend**: services/web`"]
+        pages["pages/: upload<br/>PS2, FS1"]
+        analysis["analysis/: parse,<br/>keep the last 3"]
+        api_client["api/: ApiClient,<br/>64 cycles a call"]
+    end
+    subgraph api ["`**API**: services/api`"]
+        routes["routes: /predictions,<br/>/model, /health"]
+    end
+    subgraph core ["`**Core**: libraries/valve-guardian`"]
+        predictor["inference/: Predictor"]
+        features["features/:<br/>statistics, FFT"]
+        model[("artifact/:<br/>model + card")]
+    end
+    contract["valve-guardian-contract:<br/>Cycle, Prediction"]
+    pages --> analysis
+    pages --> api_client
+    api_client -->|JSON| routes
+    curl -->|JSON| routes
+    routes --> predictor
+    predictor --> features
+    predictor -.->|at start| model
+    api_client -.- contract
+    routes -.- contract
     classDef outside fill:#5f6b7a,stroke:#3c4652,color:#ffffff
     classDef service fill:#2f6f8f,stroke:#1d4a60,color:#ffffff
+    classDef library fill:#00838f,stroke:#005662,color:#ffffff
     classDef artifact fill:#b8732a,stroke:#7f4e1a,color:#ffffff
-    class browser,client outside
-    class web,api service
+    classDef optional fill:#6e56a8,stroke:#463673,color:#fff,stroke-dasharray:4
+    class curl outside
+    class pages,analysis,api_client,routes service
+    class predictor,features,contract library
     class model artifact
+    style web fill:none,stroke:#1d4a60,stroke-dasharray:4 3
+    style api fill:none,stroke:#1d4a60,stroke-dasharray:4 3
+    style core fill:none,stroke:#005662,stroke-dasharray:4 3
 ```
 
-The page and the API share only the pydantic contract: the page never
-imports the model.
+A solid arrow runs on every request, a dotted one once at start; a dotted
+line without a head imports the contract. The page never imports the model.
 
 Training: offline, and the only place scikit-learn, XGBoost and MLflow live.
 
 ```mermaid
-flowchart LR
-    data[(UCI dataset)] --> select[Cross-validate<br/>keep the simplest]
-    select --> export[Export to ONNX<br/>check parity]
-    export --> model[(model.onnx<br/>+ card)]
-    export -.-> mlflow[(MLflow<br/>optional)]
-
-    classDef step fill:#2f6f8f,stroke:#1d4a60,color:#ffffff
+%%{init: {"flowchart": {"rankSpacing": 40}}}%%
+graph LR
+    data[(UCI dataset)]
+    subgraph training ["`**Training**: libraries/valve-guardian-training`"]
+        cycles["dataset/: Cycles,<br/>fingerprinted"]
+        select["evaluation/: cross-validate,<br/>keep the simplest"]
+        export["estimators/: export<br/>to ONNX, check parity"]
+    end
+    subgraph core ["`**Core**: libraries/valve-guardian`"]
+        model[("artifact/: model.onnx<br/>+ model-card.json")]
+    end
+    mlflow[(MLflow, optional)]
+    data --> cycles --> select --> export
+    export -->|just train| model
+    export -.-> mlflow
+    classDef outside fill:#5f6b7a,stroke:#3c4652,color:#ffffff
+    classDef service fill:#2f6f8f,stroke:#1d4a60,color:#ffffff
+    classDef library fill:#00838f,stroke:#005662,color:#ffffff
     classDef artifact fill:#b8732a,stroke:#7f4e1a,color:#ffffff
-    classDef optional fill:#6e56a8,stroke:#463673,color:#ffffff,stroke-dasharray:5 5
-    class select,export step
+    classDef optional fill:#6e56a8,stroke:#463673,color:#fff,stroke-dasharray:4
+    class cycles,select,export library
     class data,model artifact
     class mlflow optional
+    style training fill:none,stroke:#005662,stroke-dasharray:4 3
+    style core fill:none,stroke:#005662,stroke-dasharray:4 3
 ```
 
 ## Quickstart
@@ -188,6 +227,40 @@ the first ones, and shuffled folds hide it. With the Fourier magnitudes, every
 model scores 1.0 under both, which is why they are deployed.
 
 ## Layout
+
+```mermaid
+graph LR
+    subgraph libraries ["`**Libraries**: libraries/`"]
+        direction TB
+        contract[valve-guardian-contract] --> core[valve-guardian] --> training[valve-guardian-training]
+    end
+    subgraph services ["`**Services**: services/`"]
+        direction TB
+        web(["web: imports the contract"])
+        api(["api: the contract<br/>and valve-guardian"])
+        web ~~~ api
+    end
+    subgraph infra ["`**Infrastructure**: infra/`"]
+        direction TB
+        build[build: bake files] -->|images| run["compose, kubernetes"]
+    end
+    libraries -->|imported by| services
+    services -->|built by| infra
+    classDef outside fill:#5f6b7a,stroke:#3c4652,color:#ffffff
+    classDef service fill:#2f6f8f,stroke:#1d4a60,color:#ffffff
+    classDef library fill:#00838f,stroke:#005662,color:#ffffff
+    classDef artifact fill:#b8732a,stroke:#7f4e1a,color:#ffffff
+    classDef optional fill:#6e56a8,stroke:#463673,color:#fff,stroke-dasharray:4
+    class contract,core,training library
+    class api,web service
+    class build,run outside
+    style libraries fill:none,stroke:#005662,stroke-dasharray:4 3
+    style services fill:none,stroke:#1d4a60,stroke-dasharray:4 3
+    style infra fill:none,stroke:#9e9e9e,stroke-dasharray:4 3
+```
+
+The page imports only the contract; the API, the contract and
+`valve-guardian`; the training, all three libraries.
 
 - [libraries/valve-guardian-contract](libraries/valve-guardian-contract/README.md):
   the pydantic models every side shares.

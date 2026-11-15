@@ -868,7 +868,7 @@ wheels = [
 
 [[package]]
 name = "predictive-valve-guardian"
-version = "2.0.0"
+version = "2.0.1"
 source = { virtual = "." }
 dependencies = [
     { name = "valve-guardian" },
@@ -1394,7 +1394,7 @@ wheels = [
 
 [[package]]
 name = "valve-guardian"
-version = "2.0.0"
+version = "2.0.1"
 source = { editable = "libraries/valve-guardian" }
 dependencies = [
     { name = "numpy" },
@@ -1411,7 +1411,7 @@ requires-dist = [
 
 [[package]]
 name = "valve-guardian-api"
-version = "2.0.0"
+version = "2.0.1"
 source = { editable = "services/api" }
 dependencies = [
     { name = "fastapi" },
@@ -1434,7 +1434,7 @@ requires-dist = [
 
 [[package]]
 name = "valve-guardian-contract"
-version = "2.0.0"
+version = "2.0.1"
 source = { editable = "libraries/valve-guardian-contract" }
 dependencies = [
     { name = "pydantic" },
@@ -1445,7 +1445,7 @@ requires-dist = [{ name = "pydantic", specifier = ">=2.13" }]
 
 [[package]]
 name = "valve-guardian-training"
-version = "2.0.0"
+version = "2.0.1"
 source = { editable = "libraries/valve-guardian-training" }
 dependencies = [
     { name = "httpx" },
@@ -1481,7 +1481,7 @@ provides-extras = ["mlflow"]
 
 [[package]]
 name = "valve-guardian-web"
-version = "2.0.0"
+version = "2.0.1"
 source = { editable = "services/web" }
 dependencies = [
     { name = "fastapi" },

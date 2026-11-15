@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.0.1
+
+Documentation only: no change to the code or the model.
+
+- Every README of a library or a service, and the main one, has a Mermaid
+  diagram of its modules: what calls what, and where a request goes.
+- `just agent::diagrams` renders them into `build/diagrams/` and checks
+  their width against the page; the rule is in `.agents/rules/diagrams.md`.
+
 ## 2.0.0
 
 The legacy choices of 2025 are dropped: the page, the model and the

@@ -1,6 +1,6 @@
 [project]
 name = "predictive-valve-guardian"
-version = "2.0.0"
+version = "2.0.1"
 description = "Predict the valve condition of a hydraulic rig from its pressure and flow signals."
 readme = "README.md"
 license = "Apache-2.0"

@@ -1,0 +1,9 @@
+route:
+  web:
+    enabled: false
+    forceRename: web
+    kind: HTTPRoute
+    parentRefs: []
+    hostnames: []
+    rules:
+      - backendRefs: [{ identifier: web, port: 8080 }]

@@ -1,0 +1,6 @@
+persistence:
+  uploads:
+    type: emptyDir
+    advancedMounts:
+      web:
+        web: [{ path: /tmp }]

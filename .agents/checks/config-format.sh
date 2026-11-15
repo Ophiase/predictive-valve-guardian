@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Usage: config-format.sh <file>...
-# Reports configuration files laid out on one line where they deserve
-# indentation (.agents/rules/config-format.md): a YAML flow mapping, a TOML
-# file taplo would change, a Nix file nixfmt would change. A formatter that is
+# Reports configuration files whose layout hides what a reader looks for
+# (.agents/rules/config-format.md): YAML nested past six levels, a TOML file
+# taplo would change, a Nix file nixfmt would change. A formatter that is
 # not installed is skipped with a note, never failed.
 set -uo pipefail
 
@@ -12,8 +12,7 @@ for file in "$@"; do
   [[ -f $file ]] || continue
   case $file in
     *.yaml)
-      if grep -nE '(^|[:,\[-])[[:space:]]*\{[^}]' "$file" | grep -vE '^\s*[0-9]+:\s*#|\$\{\{'; then
-        printf '%s: a flow mapping {...}; write it as a block, one key per line.\n' "$file"
+      if awk -v limit=12 '{ match($0, /^ */) } RLENGTH > limit { printf "%s:%d: nested deeper than %d spaces; inline the leaf as { ... } or split the file.\n", FILENAME, FNR, limit; found = 1 } END { exit !found }' "$file"; then
         status=1
       fi
       ;;

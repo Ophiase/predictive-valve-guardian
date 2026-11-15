@@ -1,0 +1,29 @@
+[project]
+name = "valve-guardian-api"
+version = "2.0.0"
+description = "A typed HTTP API that predicts the valve condition of hydraulic cycles."
+license = "Apache-2.0"
+requires-python = ">=3.14"
+authors = [{ name = "Ophiase" }]
+dependencies = [
+  "fastapi>=0.163.0",
+  "numpy>=2.5.4",
+  "pydantic-settings>=2.16.3",
+  "uvicorn>=0.54.0",
+  "valve-guardian",
+  "valve-guardian-contract",
+]
+
+[project.scripts]
+valve-guardian-api = "valve_guardian_api.application:main"
+
+[tool.uv.sources]
+valve-guardian = { workspace = true }
+valve-guardian-contract = { workspace = true }
+
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/valve_guardian_api"]

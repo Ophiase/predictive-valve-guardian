@@ -1,5 +1,36 @@
 # Changelog
 
+## 2.0.0
+
+The legacy choices of 2025 are dropped: the page, the model and the
+evaluation are rebuilt.
+
+- Streamlit is gone. `services/api` is a typed FastAPI service
+  (`/predictions`, `/model`, `/health`, OpenAPI at `/docs`);
+  `services/web` is a server-rendered page that only talks to it over HTTP.
+- `libraries/valve-guardian-contract` holds the pydantic models both sides
+  share; the page never imports the model, the API never imports the page.
+- The model is selected by repeated stratified cross-validation and a
+  parsimony rule, checked on the chronological holdout, and served as ONNX.
+  The deployed model is a logistic regression on 54 features: 1.5 KB instead
+  of a 147 KB XGBoost.
+- Every model ships with a card: features, cross-validated and holdout
+  metrics, dataset hash, library versions; its identifier is a content hash.
+- Training is tracked locally in `runs/`, or in MLflow, model registry
+  included, when `MLFLOW_TRACKING_URI` is set; MLflow is optional.
+- `libraries/valve-guardian-training` keeps scikit-learn, XGBoost and the
+  ONNX converters out of the serving images.
+- Two images built by bake, `valve-guardian-api` and `valve-guardian-web`,
+  a compose stack in `infra/compose` (`just run`), and bjw-s app-template
+  values in `infra/kubernetes`, exposed through the Gateway API.
+- `just audit` lists known vulnerabilities; `just audit-licenses` the
+  licences.
+- `just ci` runs from any pipeline after `infra/pipeline/bootstrap.sh`:
+  every check, then the images at the commit's tag, skipped when published.
+- `just infra::all` and the guards hold compose and the Kubernetes values to
+  `.agents/rules/infrastructure.md`: yamllint, smells, kubeconform,
+  kube-linter, hadolint; `just infra::parity` compares compose and the chart.
+
 ## 1.3.0
 
 The 2026 modernization. The model and its features are unchanged: the

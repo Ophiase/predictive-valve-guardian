@@ -1,0 +1,9 @@
+checks:
+  addAllBuiltIn: true
+  exclude:
+    - dnsconfig-options
+    - minimum-three-replicas
+    - no-anti-affinity
+    - no-node-affinity
+    - required-annotation-email
+    - required-label-owner

@@ -1,0 +1,22 @@
+controllers:
+  api:
+    forceRename: api
+    replicas: 2
+    strategy: RollingUpdate
+    defaultContainerOptions:
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities: { drop: [ALL] }
+      resources:
+        requests: { cpu: 50m, memory: 128Mi }
+        limits: { memory: 512Mi }
+    containers:
+      api:
+        image:
+          repository: "{{ .Values.global.registry }}valve-guardian-api"
+          tag: "{{ .Values.global.imageTag }}"
+        ports: [{ name: http, containerPort: 8000 }]
+        probes:
+          liveness: { enabled: true, type: HTTP, path: /health }
+          readiness: { enabled: true, type: HTTP, path: /health }

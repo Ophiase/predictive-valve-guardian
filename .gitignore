@@ -1,6 +1,9 @@
 # The UCI dataset, downloaded by `just data`
 /data/
 
+# Local training runs and the MLflow store, written by `just train` and `just mlflow`
+/runs/
+
 __pycache__/
 *.py[cod]
 .venv/

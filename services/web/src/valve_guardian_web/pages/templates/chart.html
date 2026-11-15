@@ -1,0 +1,15 @@
+<figure>
+  <figcaption>{{ title }} <span>{{ unit }}</span></figcaption>
+  <svg class="chart" viewBox="0 0 {{ figure.WIDTH }} {{ figure.HEIGHT }}" role="img" aria-label="{{ title }}">
+    {% for tick in chart.values %}
+    <line class="grid" x1="{{ figure.LEFT }}" x2="{{ figure.WIDTH - figure.RIGHT }}" y1="{{ tick.position }}" y2="{{ tick.position }}"/>
+    <text class="axis" x="{{ figure.LEFT - 8 }}" y="{{ tick.position }}" dy="0.32em" text-anchor="end">{{ tick.label }}</text>
+    {% endfor %}
+    <line class="frame" x1="{{ figure.LEFT }}" x2="{{ figure.WIDTH - figure.RIGHT }}" y1="{{ figure.HEIGHT - figure.BOTTOM }}" y2="{{ figure.HEIGHT - figure.BOTTOM }}"/>
+    {% for tick in chart.seconds %}
+    <line class="frame" x1="{{ tick.position }}" x2="{{ tick.position }}" y1="{{ figure.HEIGHT - figure.BOTTOM }}" y2="{{ figure.HEIGHT - figure.BOTTOM + 4 }}"/>
+    {% if show_seconds %}<text class="axis" x="{{ tick.position }}" y="{{ figure.HEIGHT - 4 }}" text-anchor="middle">{{ tick.label }}</text>{% endif %}
+    {% endfor %}
+    <polyline class="line" points="{{ chart.line }}"/>
+  </svg>
+</figure>

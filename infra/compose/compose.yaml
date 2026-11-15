@@ -1,0 +1,25 @@
+name: valve-guardian
+
+services:
+  api:
+    image: valve-guardian-api:${TAG:-dev}
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    ports:
+      - 127.0.0.1:8000:8000
+
+  web:
+    image: valve-guardian-web:${TAG:-dev}
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /tmp
+    environment:
+      VALVE_GUARDIAN_WEB_API_URL: http://api:8000
+    ports:
+      - 127.0.0.1:8080:8080
+    depends_on:
+      api:
+        condition: service_healthy

@@ -1,0 +1,10 @@
+networkpolicies:
+  api:
+    forceRename: api
+    controller: api
+    policyTypes: [Ingress]
+    rules:
+      ingress:
+        - ports: [{ protocol: TCP, port: 8000 }]
+          from:
+            - podSelector: { matchLabels: { app.kubernetes.io/controller: web } }

@@ -1,0 +1,23 @@
+controllers:
+  web:
+    forceRename: web
+    replicas: 1
+    strategy: RollingUpdate
+    defaultContainerOptions:
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities: { drop: [ALL] }
+      resources:
+        requests: { cpu: 50m, memory: 128Mi }
+        limits: { memory: 1Gi }
+    containers:
+      web:
+        image:
+          repository: "{{ .Values.global.registry }}valve-guardian-web"
+          tag: "{{ .Values.global.imageTag }}"
+        env: { VALVE_GUARDIAN_WEB_API_URL: http://api:8000 }
+        ports: [{ name: http, containerPort: 8080 }]
+        probes:
+          liveness: { enabled: true, type: HTTP, path: /health }
+          readiness: { enabled: true, type: HTTP, path: /health }

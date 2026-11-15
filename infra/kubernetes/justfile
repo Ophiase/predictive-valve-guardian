@@ -1,0 +1,48 @@
+set positional-arguments := true
+
+here := source_directory()
+root := here / "../.."
+chart := "oci://ghcr.io/bjw-s-labs/helm/app-template"
+chart_version := "5.3.0"
+release := "valve-guardian"
+namespace := "valve-guardian"
+cluster := "valve-guardian"
+
+[doc("Print the manifests, nothing applied: just kubernetes::template ghcr.io/me 1a2b3c4d")]
+template registry="" tag="dev":
+    @just --justfile {{ here }}/justfile _helm template "{{ registry }}" "{{ tag }}"
+
+[doc("Install or upgrade the release on the current kubectl context")]
+deploy registry="" tag="dev":
+    @just --justfile {{ here }}/justfile _helm upgrade "{{ registry }}" "{{ tag }}"
+
+[script("bash")]
+_helm command registry tag:
+    set -euo pipefail
+    cd {{ root }}
+    registry=$2
+    [[ -z $registry || $registry == */ ]] || registry+=/
+    values=(--set-string "global.registry=$registry" --set-string "global.imageTag=$3")
+    while IFS= read -r file; do values+=(--values "$file"); done < <(find infra/kubernetes/values -name '*.yaml' | sort)
+    chart=({{ chart }} --version {{ chart_version }} --namespace {{ namespace }})
+    case $1 in
+        template) helm template {{ release }} "${chart[@]}" "${values[@]}" ;;
+        upgrade) helm upgrade --install {{ release }} "${chart[@]}" "${values[@]}" --create-namespace --wait ;;
+    esac
+
+[doc("A local kind cluster with the dev images loaded, the release installed on it")]
+[script("bash")]
+kind:
+    set -euo pipefail
+    kind get clusters | grep -qx {{ cluster }} || kind create cluster --name {{ cluster }}
+    kind load docker-image valve-guardian-api:dev valve-guardian-web:dev --name {{ cluster }}
+    kubectl config use-context kind-{{ cluster }}
+    just --justfile {{ here }}/justfile deploy
+
+[doc("Open the page on localhost:8080 through the cluster")]
+open:
+    kubectl port-forward --namespace {{ namespace }} service/web 8080:8080
+
+[doc("Delete the local kind cluster")]
+kind-delete:
+    kind delete cluster --name {{ cluster }}

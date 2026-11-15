@@ -1,0 +1,13 @@
+compose := "docker compose --file " + source_directory() / "compose.yaml"
+
+[doc("Start the API and the page on localhost:8080, from the dev images")]
+up:
+    {{ compose }} up --detach --wait
+
+[doc("Stop and remove the stack")]
+down:
+    {{ compose }} down
+
+[doc("Follow the logs of the stack")]
+logs:
+    {{ compose }} logs --follow

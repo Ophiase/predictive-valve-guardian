@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block main %}
+{% set cycles = analysis.signals.cycles %}
+{% set step = 500 if cycles > 1000 else (100 if cycles > 200 else 10) %}
+<p class="summary">
+  <span class="number">{{ cycles }}</span> cycles:
+  <span class="number good">{{ analysis.optimal }}</span> optimal,
+  <span class="number bad">{{ cycles - analysis.optimal }}</span> faulty.
+  <span class="meta">Model <span class="number">{{ analysis.model }}</span> · <a href="/analyses/{{ identifier }}/predictions.csv">predictions.csv</a></span>
+</p>
+
+<section class="recording">
+  <svg class="timeline" viewBox="0 0 {{ cycles }} 1" preserveAspectRatio="none" role="img" aria-label="One bar per cycle, green optimal, red faulty">
+    {% for each in analysis.predictions %}<a href="?cycle={{ loop.index0 }}"><rect x="{{ loop.index0 }}" width="1" height="1" class="{{ 'good' if each.optimal else 'bad' }}"><title>Cycle {{ loop.index0 }}</title></rect></a>{% endfor %}
+    {% set marker = [1, cycles / 300]|max %}
+    <rect class="cursor" x="{{ cycle - marker / 2 }}" width="{{ marker }}" height="1"/>
+  </svg>
+  <div class="scale">
+    {% for index in range(0, cycles, step) %}<span style="left: {{ 100 * index / cycles }}%">{{ index }}</span>{% endfor %}
+  </div>
+</section>
+
+<div class="cycle-head">
+  <h1>Cycle {{ cycle }}</h1>
+  <p class="verdict {{ 'good' if prediction.optimal else 'bad' }}">{{ 'optimal' if prediction.optimal else 'faulty' }}
+    <span class="meta">p = <span class="number">{{ "%.4f"|format(prediction.probability) }}</span></span></p>
+  <nav>
+    {% if cycle > 0 %}<a href="?cycle={{ cycle - 1 }}">‹ {{ cycle - 1 }}</a>{% endif %}
+    <form method="get"><input type="number" name="cycle" min="0" max="{{ cycles - 1 }}" value="{{ cycle }}" aria-label="Cycle"></form>
+    {% if cycle < cycles - 1 %}<a href="?cycle={{ cycle + 1 }}">{{ cycle + 1 }} ›</a>{% endif %}
+  </nav>
+</div>
+
+{% with title="PS2, pressure", unit="bar", chart=pressure, show_seconds=false %}{% include "chart.html" %}{% endwith %}
+{% with title="FS1, flow", unit="l/min", chart=flow, show_seconds=true %}{% include "chart.html" %}{% endwith %}
+{% endblock %}

@@ -1,0 +1,16 @@
+name: release
+on: workflow_dispatch
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  delivery:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - run: infra/pipeline/bootstrap.sh
+      - run: just ci "ghcr.io/${GITHUB_REPOSITORY_OWNER,,}"
+        env:
+          REGISTRY_USERNAME: ${{ github.actor }}
+          REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,9 @@
+route:
+  api:
+    enabled: false
+    forceRename: api
+    kind: HTTPRoute
+    parentRefs: []
+    hostnames: []
+    rules:
+      - backendRefs: [{ identifier: api, port: 8000 }]

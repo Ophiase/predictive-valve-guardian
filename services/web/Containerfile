@@ -1,0 +1,45 @@
+# check=skip=InvalidDefaultArgInFrom
+ARG BASE_IMAGE
+ARG UV_IMAGE
+
+FROM ${UV_IMAGE} AS uv
+FROM ${BASE_IMAGE} AS system
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+FROM system AS resolver
+
+COPY --from=uv /uv /bin/uv
+ENV UV_LINK_MODE=copy \
+    UV_COMPILE_BYTECODE=1 \
+    UV_PYTHON_DOWNLOADS=never
+
+WORKDIR /app
+COPY --link . .
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-dev --no-install-workspace --package valve-guardian-web
+
+FROM resolver AS build
+
+COPY --link --from=contract . libraries/valve-guardian-contract
+COPY --link --from=service . services/web
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-dev --no-editable --package valve-guardian-web
+
+FROM system AS runtime
+
+RUN useradd --system --uid 10001 --no-create-home guardian
+COPY --from=build /app/.venv /app/.venv
+ENV PATH=/app/.venv/bin:$PATH \
+    VALVE_GUARDIAN_WEB_HOST=0.0.0.0
+
+USER guardian
+WORKDIR /home/guardian
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=4)"]
+
+ENTRYPOINT ["valve-guardian-web"]

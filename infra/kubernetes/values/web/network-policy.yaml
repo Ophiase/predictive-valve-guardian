@@ -1,0 +1,8 @@
+networkpolicies:
+  web:
+    forceRename: web
+    controller: web
+    policyTypes: [Ingress]
+    rules:
+      ingress:
+        - ports: [{ protocol: TCP, port: 8080 }]

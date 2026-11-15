@@ -15,3 +15,4 @@ disable = [
 [per-file-ignores]
 "README.md" = ["MD013"]
 "infra/terraform/README.md" = ["MD013"]
+"docs/benchmark.md" = ["MD013"]

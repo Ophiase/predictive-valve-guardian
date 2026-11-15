@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block main %}
+<h1>Valve condition, cycle by cycle</h1>
+<p class="lead">Two files, laid out as the UCI hydraulic dataset: one cycle per
+line, 6000 pressure samples (PS2) and 600 flow samples (FS1).</p>
+{% if error %}<p class="alert">{{ error }}</p>{% endif %}
+<form class="upload" action="/analyses" method="post" enctype="multipart/form-data">
+  <label><span>PS2</span><input type="file" name="pressure" accept=".txt,.csv,.tsv" required></label>
+  <label><span>FS1</span><input type="file" name="flow" accept=".txt,.csv,.tsv" required></label>
+  <button type="submit">Predict</button>
+</form>
+{% if card %}
+<h2>Deployed model</h2>
+<dl class="facts">
+  <dt>Estimator</dt><dd>{{ card.estimator }}</dd>
+  <dt>Features</dt><dd>statistics to order {{ card.features.order }}, {{ card.features.fourier_coefficients }} Fourier magnitudes per signal</dd>
+  <dt>F1, cross-validated</dt><dd class="number">{{ "%.4f"|format(card.cross_validation.f1.mean) }} ± {{ "%.4f"|format(card.cross_validation.f1.deviation) }}</dd>
+  <dt>F1, holdout</dt><dd class="number">{{ "%.4f"|format(card.holdout.f1) }}</dd>
+  <dt>Identifier</dt><dd class="number">{{ card.identifier }}</dd>
+</dl>
+{% else %}
+<p class="alert">The API does not answer.</p>
+{% endif %}
+{% endblock %}

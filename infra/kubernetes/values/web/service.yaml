@@ -1,0 +1,6 @@
+service:
+  web:
+    forceRename: web
+    controller: web
+    ports:
+      http: { port: 8080, targetPort: http }

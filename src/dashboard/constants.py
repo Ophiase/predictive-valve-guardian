@@ -1,5 +1,0 @@
-PAGE_TITLE = "Predictive Valve Guardian"
-LAYOUT = "wide"
-PS2_KEY = "ps2"
-FS1_KEY = "fs1"
-PREDICTIONS_KEY = "predictions"

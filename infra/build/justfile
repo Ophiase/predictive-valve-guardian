@@ -1,0 +1,21 @@
+root := source_directory() / "../.."
+bake := "docker buildx bake --file infra/build/variables.hcl --file infra/build/contexts.hcl --file infra/build/build.hcl"
+
+[doc("Build an image target at the dev tag: just image::build dashboard")]
+build target="dashboard":
+    cd {{ root }} && {{ bake }} {{ target }}
+
+[doc("Build the dashboard tagged with VERSION and latest")]
+[script("bash")]
+release:
+    set -euo pipefail
+    cd {{ root }}
+    VERSION=$(tr -d '[:space:]' < VERSION) {{ bake }} dashboard-release
+
+[doc("Print the resolved bake definition of a target, nothing built")]
+print target="dashboard":
+    cd {{ root }} && {{ bake }} --print {{ target }}
+
+[doc("Run the dashboard image on localhost:8501")]
+run tag="dev":
+    docker run --rm --name valve-guardian-dashboard -p 127.0.0.1:8501:8501 valve-guardian-dashboard:{{ tag }}

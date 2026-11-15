@@ -1,14 +1,18 @@
-# Python-generated files
+# The UCI dataset, downloaded by `just data`
+/data/
+
 __pycache__/
-*.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
+*.py[cod]
+.venv/
+/build/
+/dist/
+*.egg-info/
 
-# Virtual environments
-.venv
+.pytest_cache/
+.ruff_cache/
+.rumdl_cache/
 
-ignore/
-data_cache/
-discovery.ipynb
+.env
+.envrc
+.claude/worktrees/
+.claude/settings.local.json

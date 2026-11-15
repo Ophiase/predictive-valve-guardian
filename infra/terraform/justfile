@@ -1,0 +1,13 @@
+here := source_directory()
+
+[doc("Download the provider into infra/terraform")]
+init:
+    cd {{ here }} && terraform init
+
+[doc("Show what apply would change on Cloud Run")]
+plan:
+    cd {{ here }} && terraform plan
+
+[doc("Deploy the image named in terraform.tfvars to Cloud Run")]
+apply:
+    cd {{ here }} && terraform apply

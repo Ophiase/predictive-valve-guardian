@@ -1,109 +1,84 @@
-set dotenv-load := true
-set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
+mod agent
+mod image "infra/build/justfile"
+mod terraform "infra/terraform/justfile"
 
-# User
+default:
+    @just --list --list-submodules
 
-[group("USER")]
+[group("install")]
+[doc("Create the uv environment for Python 3.14 and install the workspace")]
 install:
-    uv run task install
+    uv sync
 
-[group("USER")]
-uninstall:
-    rm -rf .venv
+[group("user")]
+[doc("Open the dashboard on localhost:8501; extra arguments go to streamlit")]
+dashboard *args:
+    uv run valve-guardian-dashboard --server.port=8501 {{ args }}
 
-[group("USER")]
-reinstall:
-    rm -rf .venv
-    uv run task install
+[group("model")]
+[doc("Download the UCI hydraulic dataset into data/hydraulic")]
+data:
+    uv run python -m valve_guardian.dataset
 
-[group("USER")]
-dashboard:
-    uv run streamlit run src/dashboard/__main__.py \
-    	--server.port=8501 \
-    	--server.address=0.0.0.0
+[group("model")]
+[doc("Train the deployed model and overwrite its cached file")]
+train:
+    uv run python -m valve_guardian.training
 
-[group("USER")]
-start: dashboard
+[group("model")]
+[doc("Every candidate model on every representation, best first")]
+benchmark:
+    uv run python -m valve_guardian.training.estimation
 
-# Dev
-
-[group("AI")]
-retrieve_data:
-    uv run -m processor.data.retrieve_data
-
-[group("AI")]
-train_model:
-    uv run -m processor.train
-
-[group("AI")]
-model_estimation:
-    uv run -m processor.train.model_estimation
-
-[group("TEST")]
-tests:
-    @echo "Running all tests..."
-
-[group("DEMO")]
+[group("model")]
+[doc("Check the deployed model on the test cycles; downloads the dataset if absent")]
 demo:
-    uv run -m tests.demo.verify_data
-    uv run -m tests.demo.verify_model
+    uv run python libraries/valve-guardian/tests/demo/verify_model.py
 
-[group("DEV")]
-update:
-    @uv run task update
-
-[group("DEV")]
-enable_hooks:
-    uv run pre-commit install
-
-[group("DEV")]
-disable_hooks:
-    uv run pre-commit uninstall
-
-[group("DEV")]
-lint:
-    @uv run task lint
-
-[group("DEV")]
-ty:
-    @uv run task ty
-
-[group("DEV")]
+[group("dev")]
+[doc("Rewrite the code with ruff, then type-check it with ty")]
 precommit:
-    uv run task lint
-    uv run task ty
+    uv run ruff check . --fix
+    uv run ruff format .
+    uv run ty check .
 
-# deploy
+[group("dev")]
+[doc("Report style and typing defects without changing the code")]
+lint:
+    uv run ruff check .
+    uv run ruff format --check .
+    uv run ty check .
 
-DEV_TAG := "dev"
-LATEST_TAG := "latest"
-IMAGE_NAME := "valve-guardian-dashboard"
-CONTAINER_NAME := "valve-guardian-dashboard"
+[group("dev")]
+[doc("Run the unit tests")]
+test:
+    uv run pytest
 
-[group("DEPLOY")]
-build tag=DEV_TAG:
-    docker build -t {{ CONTAINER_NAME }}:{{ tag }} .
+[group("dev")]
+[doc("Check the lock, the known vulnerabilities and the licences; asks the network, so it stays out of the gate")]
+audit:
+    uv lock --check
+    uv audit
+    uv run --with pip-licenses pip-licenses --partial-match --fail-on "GPL;AGPL;SSPL"
 
-[group("UTILITIES")]
-_increment:
-    @echo "Incrementing version..."
+[group("dev")]
+[doc("Everything that must pass before declaring work done")]
+check: lint test rumdl
 
-[group("UTILITIES")]
+[group("dev")]
+[doc("Check the markdown of the repository")]
+rumdl:
+    rumdl check .
+
+[group("dev")]
+[doc("Run the project's and the portable checks over every changed file")]
 [script("bash")]
-_tag version is_latest="true":
-    docker tag \
-        {{ IMAGE_NAME }}:{{ DEV_TAG }} \
-        {{ IMAGE_NAME }}:{{ version }}
-    if [ "{{ is_latest }}" = "true" ]; then \
-        docker tag \
-            {{ IMAGE_NAME }}:{{ DEV_TAG }} \
-            {{ IMAGE_NAME }}:latest; \
-    fi
+guards:
+    status=0
+    for check in markdown french comment-slop no-suppression no-module-docstring one-class no-protocol callable-alias hardcoded-url portable folder-size yaml-extension config-format file-length version; do
+        just _guard "$check" || status=1
+    done
+    exit $status
 
-[group("DEPLOY")]
-run tag=DEV_TAG:
-    docker run --name {{ CONTAINER_NAME }} -p 8501:8501 {{ IMAGE_NAME }}:{{ tag }}
-
-[group("DEPLOY")]
-release:
-    @echo "Releasing new version..."
+_guard check:
+    @.agents/portable/checks/changed-files.sh | xargs -r -d '\n' .agents/checks/run.sh {{ check }}

@@ -1,0 +1,2 @@
+# The Terraform is kept byte for byte as written in 2025: its GCP project is gone.
+*/infra/terraform/*.tf

@@ -1,10 +1,27 @@
 line-length = 88
 preview = true
+target-version = "py314"
+
+extend-exclude = [".agents"]
 
 [lint]
-select = ["E", "F", "UP", "B", "I", "SIM", "S", "RUF", "PTH", "C4", "ARG", "G"]
-extend-select = ["RUF029"]
+extend-select = ["unused-async"]
 fixable = ["ALL"]
+select = [
+  "E",
+  "F",
+  "UP",
+  "B",
+  "I",
+  "SIM",
+  "S",
+  "RUF",
+  "PTH",
+  "C4",
+  "ARG",
+  "G",
+  "ANN",
+]
 
 [lint.per-file-ignores]
-"tests/**/*.py" = ["S101"]
+"**/tests/**/*.py" = ["assert"]

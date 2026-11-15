@@ -1,339 +1,144 @@
-# Predictive Valve Guardian System for Hydraulic Systems
+# Predictive Valve Guardian
 
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-yellow.svg)](https://www.python.org/)
-[![UV](https://img.shields.io/badge/uv-available-brightgreen.svg)](https://astral.sh/uv)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
+[![Python 3.14](https://img.shields.io/badge/Python-3.14-yellow.svg)](https://www.python.org/)
+[![uv](https://img.shields.io/badge/uv-workspace-brightgreen.svg)](https://docs.astral.sh/uv/)
 [![Justfile](https://img.shields.io/badge/just-available-brightgreen.svg)](https://just.systems/man/en/)
-[![Docker](https://img.shields.io/badge/Docker-available-blue.svg)](https://www.docker.com/)
+[![Kanon](https://img.shields.io/badge/%3C%3E-Kanon-blueviolet.svg)](.agents/kanon.md)
 
-This repository contains code to predict the valve condition of a hydraulic system based on sensor data.
+Predict, cycle by cycle, whether the valve of a hydraulic system is in optimal
+condition, from its pressure and flow sensors.
+
+> [!NOTE]
+> Written in 2025 as a time-boxed assignment, modernized in 2026. The original
+> choices are kept on purpose; reasonable then, they would not be mine today,
+> in the agentic era:
+>
+> - **Streamlit** made sense for a page written by hand under a deadline. With
+>   an agent, a typed API (FastAPI, pydantic) and a thin page in front cost
+>   little more and keep the model apart from the UI.
+> - **XGBoost** was picked among models that all score 1.0 on 205 test cycles,
+>   which cannot rank them; a cross-validated evaluation should come first.
+> - **The Terraform** in [infra/terraform](infra/terraform/README.md) was
+>   tested and deployed in 2025; its GCP project is gone, so it is kept as it
+>   was and can no longer evolve.
 
 <div align="center">
   <img src="./resources/dashboard/dashboard_preview_00.png" width="800">
 </div>
 
-Check the [terraform/README.md](./terraform/README.md) for a step-by-step deployment of this solution on Google Cloud Platform (GCP).
-
-## Summary
-
-- [Quickstart](#quickstart)
-- [Terraform Deployment](./terraform/README.md)
-- [Problem Statement](#problem-statement)
-- [Solution](#solution)
-- [Conclusion](#conclusion)
-
 ## Quickstart
 
-### Setup Environment
+[uv](https://docs.astral.sh/uv/getting-started/installation/) and
+[just](https://just.systems/man/en/) are the prerequisites; Docker with buildx
+for the image.
 
-- [Justfiles](https://github.com/casey/just?tab=readme-ov-file#packages)
-- [Docker](https://docs.docker.com/engine/install/])
-- [uv package manager](https://docs.astral.sh/uv/getting-started/installation/).
-
-### Dashboard
-
-Launch the dashboard server.
-We use streamlit because it's simple and efficient for quick prototyping.
-
-```bash
-# Launch dashboard
+```sh
 just install
-just dashboard
-
-# Or with docker
-just build
-just run
+just dashboard          # http://localhost:8501
 ```
 
-You can then access the dashboard at: [http://localhost:8501](http://localhost:8501)
+Or in a container:
 
-### Play with the Processor
-
-```bash
-# Retrieve the data
-just retrieve_data
-
-# (Optional) Retrain the model
-just train_model
-
-# Test the data integrity and the model
-just tests
-
-# Verify model estimation
-just model_estimation
+```sh
+just image::build
+just image::run         # http://localhost:8501
 ```
 
-## Problem Statement
+The model:
 
-We acquire data from:
+```sh
+just data               # download the UCI dataset into data/hydraulic
+just demo               # check the deployed model on the 205 test cycles
+just benchmark          # every candidate model on every representation
+just train              # retrain and overwrite the deployed model
+```
 
-- <https://archive.ics.uci.edu/dataset/447/condition+monitoring+of+hydraulic+systems>
+`just` alone lists every recipe.
 
-A cycle is a complete operation of the valve guardian system.\
-We have $C=2205$ cycles of data from a valve guardian system.\
-At each cycle $i < C$ we have $X_i$ composed of:
+## Layout
 
-- $PS2_i$: Pressure Sensor 2 value
-  - in bar
-  - 100Hz, fixed length
-  - i.e. a time series of 6000 values
-- $FS1_i$: Flow Sensor 1 value
-  - in liters per second
-  - 10 Hz, fixed length
-  - i.e. a time series of 600 values
+```text
+libraries/valve-guardian/   the dataset, the features, the model, the training
+services/dashboard/         the Streamlit page and its Containerfile
+infra/build/                the bake files: images, contexts, tags
+infra/terraform/            the Cloud Run deployment
+```
 
-And also:
+A service knows how to build itself and nothing else: its `Containerfile`
+receives its base images as arguments and its sources as named contexts.
+What to tag, from which base, lives in `infra/build`; where to deploy, in
+`infra/terraform`.
 
-- $Profile_i$: Profile value
-  - (cooler, $z_i$ = valve_condition, pump, accumulator, stable flag)
-  - $z_i \in \{73, 80, 90, 100\}$
+## Problem statement
 
-We want to estimate if `valve_condition == 100` at each cycle $i$.
+The data comes from the UCI
+[Condition monitoring of hydraulic systems](https://archive.ics.uci.edu/dataset/447/condition+monitoring+of+hydraulic+systems)
+dataset.
 
-- i.e. $z_i = 100$
+A cycle is one complete operation of the system. There are $C = 2205$
+cycles, and each cycle $i < C$ holds:
 
-So we are trying to learn a function:
+- $PS2_i$: pressure sensor 2, in bar, at 100 Hz: 6 000 values.
+- $FS1_i$: flow sensor 1, in litres per minute, at 10 Hz: 600 values.
+- $Profile_i$: cooler, valve, pump, accumulator and stable flag, where the
+  valve condition $z_i \in \{73, 80, 90, 100\}$.
 
-- $f_\theta: \Bbb R^{6000} \times \Bbb R^{600} \to {0, 1}$
+We estimate whether $z_i = 100$, that is, we learn
 
-We use the $2000$ first cycles as training set, and the $205$ last cycles as test set.
+$$f_\theta : \mathbb{R}^{6000} \times \mathbb{R}^{600} \to \{0, 1\}$$
+
+on the first 2 000 cycles and test it on the last 205.
 
 ## Solution
 
-Observations:
+The target is one category of a categorical variable: a binary
+classification. The inputs are time series of fixed length that oscillate,
+so classical models on engineered features are the first thing to try:
 
-1. The variable to predict is categorical and we are interested in one category, it's a binary classification problem.
-2. The data we have are times series of fixed length, so we can use classical machine learning models.
-3. Their values seems to oscillate, so we can try to perform some feature engineering to extract relevant features.
+- **Raw**: every sample is a feature.
+- **Statistics**: mean, standard deviation, minimum, maximum, 10th and 90th
+  percentiles and energy, on the signal (order 0), its first difference
+  (order 1) and its second difference (order 2).
+- **Fourier**: the magnitudes of the first 20 coefficients of the FFT.
 
-I Will try the following feature engineering:
-
-- Raw data: Use the raw time series as features.
-- Statistical features: Extract statistical features (mean, std, min, max, etc.) from
-  - Order 0: directly on the time series
-  - Order 1: on the first derivative of the time series
-  - Order 2: on the second derivative of the time series
-- FFT features: Extract features from the Fast Fourier Transform of the time series.
-
-I will try the following models:
-
-- LogisticRegression
-- RandomForest
-- XGBoost
-- 1D-CNN or LSTMs to encode the time series directly.
-  - If will try those approeach only if the classical models don't work well enough.
-    - Finally it was not necessary.
-    - The FFT-based approach is already very efficient, it's unlikely that deep learning models will be faster and more accurate.
+The models are a logistic regression, a random forest and XGBoost. A 1D CNN or
+an LSTM was planned only if those failed; they did not.
 
 ### Results
 
-<div>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>data</th>
-      <th>feature_order</th>
-      <th>fft</th>
-      <th>model</th>
-      <th>accuracy</th>
-      <th>f1</th>
-      <th>total_execution_time</th>
-      <th>feature_time</th>
-      <th>predict_time</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>2</th>
-      <td>raw</td>
-      <td>0</td>
-      <td>False</td>
-      <td>XGBoost</td>
-      <td>1.000000</td>
-      <td>1.000000</td>
-      <td>0.856224</td>
-      <td>0.854316</td>
-      <td>0.001909</td>
-    </tr>
-    <tr>
-      <th>0</th>
-      <td>raw</td>
-      <td>0</td>
-      <td>False</td>
-      <td>LogisticRegression</td>
-      <td>1.000000</td>
-      <td>1.000000</td>
-      <td>0.863043</td>
-      <td>0.854316</td>
-      <td>0.008727</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>raw</td>
-      <td>0</td>
-      <td>False</td>
-      <td>RandomForest</td>
-      <td>1.000000</td>
-      <td>1.000000</td>
-      <td>0.870389</td>
-      <td>0.854316</td>
-      <td>0.016073</td>
-    </tr>
-    <tr>
-      <th>9</th>
-      <td>features</td>
-      <td>0</td>
-      <td>True</td>
-      <td>LogisticRegression</td>
-      <td>1.000000</td>
-      <td>1.000000</td>
-      <td>1.149279</td>
-      <td>1.149080</td>
-      <td>0.000198</td>
-    </tr>
-    <tr>
-      <th>11</th>
-      <td>features</td>
-      <td>0</td>
-      <td>True</td>
-      <td>XGBoost</td>
-      <td>1.000000</td>
-      <td>1.000000</td>
-      <td>1.149786</td>
-      <td>1.149080</td>
-      <td>0.000705</td>
-    </tr>
-    <tr>
-      <th>10</th>
-      <td>features</td>
-      <td>0</td>
-      <td>True</td>
-      <td>RandomForest</td>
-      <td>1.000000</td>
-      <td>1.000000</td>
-      <td>1.161994</td>
-      <td>1.149080</td>
-      <td>0.012914</td>
-    </tr>
-    <tr>
-      <th>12</th>
-      <td>features</td>
-      <td>2</td>
-      <td>True</td>
-      <td>LogisticRegression</td>
-      <td>1.000000</td>
-      <td>1.000000</td>
-      <td>1.841412</td>
-      <td>1.841241</td>
-      <td>0.000171</td>
-    </tr>
-    <tr>
-      <th>14</th>
-      <td>features</td>
-      <td>2</td>
-      <td>True</td>
-      <td>XGBoost</td>
-      <td>1.000000</td>
-      <td>1.000000</td>
-      <td>1.841947</td>
-      <td>1.841241</td>
-      <td>0.000706</td>
-    </tr>
-    <tr>
-      <th>13</th>
-      <td>features</td>
-      <td>2</td>
-      <td>True</td>
-      <td>RandomForest</td>
-      <td>1.000000</td>
-      <td>1.000000</td>
-      <td>1.854308</td>
-      <td>1.841241</td>
-      <td>0.013067</td>
-    </tr>
-    <tr>
-      <th>5</th>
-      <td>features</td>
-      <td>1</td>
-      <td>False</td>
-      <td>XGBoost</td>
-      <td>0.951220</td>
-      <td>0.934211</td>
-      <td>1.463776</td>
-      <td>1.463037</td>
-      <td>0.000739</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>features</td>
-      <td>1</td>
-      <td>False</td>
-      <td>RandomForest</td>
-      <td>0.936585</td>
-      <td>0.918239</td>
-      <td>1.476660</td>
-      <td>1.463037</td>
-      <td>0.013623</td>
-    </tr>
-    <tr>
-      <th>8</th>
-      <td>features</td>
-      <td>2</td>
-      <td>False</td>
-      <td>XGBoost</td>
-      <td>0.936585</td>
-      <td>0.918239</td>
-      <td>1.789581</td>
-      <td>1.788842</td>
-      <td>0.000739</td>
-    </tr>
-    <tr>
-      <th>7</th>
-      <td>features</td>
-      <td>2</td>
-      <td>False</td>
-      <td>RandomForest</td>
-      <td>0.936585</td>
-      <td>0.918239</td>
-      <td>1.802702</td>
-      <td>1.788842</td>
-      <td>0.013860</td>
-    </tr>
-    <tr>
-      <th>6</th>
-      <td>features</td>
-      <td>2</td>
-      <td>False</td>
-      <td>LogisticRegression</td>
-      <td>0.604878</td>
-      <td>0.643172</td>
-      <td>1.789066</td>
-      <td>1.788842</td>
-      <td>0.000224</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>features</td>
-      <td>1</td>
-      <td>False</td>
-      <td>LogisticRegression</td>
-      <td>0.580488</td>
-      <td>0.629310</td>
-      <td>1.463191</td>
-      <td>1.463037</td>
-      <td>0.000154</td>
-    </tr>
-  </tbody>
-</table>
-</div>
+| Features | Order | Fourier | Model | Accuracy | F1 | Total time (s) |
+| --- | --- | --- | --- | --- | --- | --- |
+| raw | 0 | no | XGBoost | 1.000 | 1.000 | 0.856 |
+| raw | 0 | no | LogisticRegression | 1.000 | 1.000 | 0.863 |
+| raw | 0 | no | RandomForest | 1.000 | 1.000 | 0.870 |
+| statistics | 0 | yes | LogisticRegression | 1.000 | 1.000 | 1.149 |
+| statistics | 0 | yes | XGBoost | 1.000 | 1.000 | 1.150 |
+| statistics | 0 | yes | RandomForest | 1.000 | 1.000 | 1.162 |
+| statistics | 2 | yes | LogisticRegression | 1.000 | 1.000 | 1.841 |
+| statistics | 2 | yes | XGBoost | 1.000 | 1.000 | 1.842 |
+| statistics | 2 | yes | RandomForest | 1.000 | 1.000 | 1.854 |
+| statistics | 1 | no | XGBoost | 0.951 | 0.934 | 1.464 |
+| statistics | 1 | no | RandomForest | 0.937 | 0.918 | 1.477 |
+| statistics | 2 | no | XGBoost | 0.937 | 0.918 | 1.790 |
+| statistics | 2 | no | RandomForest | 0.937 | 0.918 | 1.803 |
+| statistics | 2 | no | LogisticRegression | 0.605 | 0.643 | 1.789 |
+| statistics | 1 | no | LogisticRegression | 0.580 | 0.629 | 1.463 |
+
+The total time is the feature extraction plus the prediction, in seconds, on
+the 2025 machine.
 
 ## Conclusion
 
-Remarks:
+The raw signals and the Fourier features both reach a perfect accuracy and F1
+score. The raw model is set aside for its dimension: 6 600 features invite
+overfitting and cost more to run.
 
-- Raw model and FFT features with classical models give the best results (perfect accuracy and f1-score).
-- We will not use the raw model because of the high dimensionality of the data, which can lead to overfitting and high computational cost.
+The deployed model is XGBoost on the order-0 statistics and the Fourier
+magnitudes: 54 features. The note at the top says what I would weigh
+differently today.
 
-We will use the FFT features, with 0th-order features with XGBoost model for the final implementation.
-Following the MDP (minimal description length principle), it provides a good balance between accuracy and computational efficiency.
+## Contributors
+
+- Ophiase — author: the 2025 model, the dashboard and the deployment.
+- Claude Code — the 2026 modernization, under the author's review.

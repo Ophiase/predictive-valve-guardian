@@ -1,0 +1,27 @@
+spec: 1
+
+identity:
+  name: predictive-valve-guardian
+  author: Ophiase
+  holder: Ophiase
+  nature: open-source
+  visibility: public
+  since: 2025
+
+audience:
+  - engineers reading a small MLOps sample end to end
+  - predictive-maintenance practitioners
+
+lifecycle:
+  stage: archived-sample
+  registries: {}
+  ci:
+    mode: manual
+    activation: consent
+
+agent:
+  autonomy:
+    commit: dev-branch
+    push: never
+    version-bump: allowed
+    commit-when: gate-passes

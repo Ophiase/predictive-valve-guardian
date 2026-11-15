@@ -1,47 +1,40 @@
 [project]
 name = "predictive-valve-guardian"
-version = "0.2.0"
-description = "Dashboard and library for a predictive valve guardian module."
+version = "1.3.0"
+description = "Predict the valve condition of a hydraulic rig from its pressure and flow signals."
 readme = "README.md"
-requires-python = ">=3.12"
+license = "Apache-2.0"
+requires-python = ">=3.14"
+authors = [{ name = "Ophiase" }]
 dependencies = [
-    "hatchling>=1.29.0",
-    "httpx>=0.28.1",
-    "joblib>=1.5.3",
-    "numpy>=2.4.4",
-    "pandas>=3.0.2",
-    "scikit-learn>=1.8.0",
-    "streamlit>=1.56.0",
-    "taskipy>=1.14.1",
-    "xgboost>=3.2.0",
+  "valve-guardian",
+  "valve-guardian-dashboard",
 ]
 
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+valve-guardian = { workspace = true }
+valve-guardian-dashboard = { workspace = true }
+
+[tool.uv.workspace]
+members = [
+  "libraries/*",
+  "services/*",
+]
 
 [dependency-groups]
 dev = [
-    "ruff>=0.15.4",
-    "ty>=0.0.20",
-    "pre-commit>=4.5.1",
-	"ipykernel>=7.2.0",
-    "pytest>=9.0.2"
+  "pytest>=9.2.0",
+  "ruff>=0.17.5",
+  "ty>=0.0.104",
 ]
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.wheel]
-packages = [
-    "src/dashboard",
-    "src/processor",
+[tool.pytest.ini_options]
+testpaths = ["libraries/valve-guardian/tests/unit"]
+addopts = [
+  "--strict-markers",
+  "--strict-config",
+  "--import-mode=importlib",
 ]
-
-[tool.taskipy.tasks]
-# Setup tasks
-install = "uv sync --all-groups"
-update = "uv lock --upgrade"
-# Development tasks
-lint = "uv run ruff check . --fix"
-ty = "uv run ty check ."
-# install-precommit = "uv run pre-commit install --install-hooks"
-# precommit = "uv run pre-commit run --all-files"

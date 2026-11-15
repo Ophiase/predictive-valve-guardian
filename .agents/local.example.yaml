@@ -1,0 +1,5 @@
+projects:
+  sibling-python:
+    path: /path/to/sibling
+    consent: ask
+    why: what its newest conventions teach, and what not to copy
